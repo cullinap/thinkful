@@ -1,0 +1,137 @@
+-- The IDs and durations for all trips of duration greater than 500, ordered by duration.
+
+SELECT
+	trip_id
+	duration
+FROM
+	trips
+WHERE
+	duration > 500
+ORDER BY duration DESC
+
+-- Every column of the stations table for station id 84.
+
+SELECT
+	*
+FROM
+	stations
+WHERE
+	station_id = 84;
+
+-- The min temperatures of all the occurrences of rain in zip 94301.
+
+SELECT
+	mintemperaturef
+FROM
+	weather
+WHERE
+	events = 'Rain' AND
+	zip = 94301;
+
+-- What was the hottest day in our data set? Where was that?
+
+SELECT date, zip, maxtemperaturef
+FROM weather 
+WHERE maxtemperaturef=(SELECT MAX(maxtemperaturef) FROM weather);
+
+-- How many trips started at each station?
+
+SELECT COUNT(station_id), station_id
+FROM stations 
+GROUP BY station_id;
+
+-- What's the shortest trip that happened?
+
+SELECT trip_id, duration
+FROM trips 
+WHERE duration=(SELECT MIN(duration) FROM trips);
+
+-- What is the average trip duration, by end station?
+
+SELECT end_station, AVG(duration)
+FROM trips 
+GROUP BY end_station;
+
+-- What are the three longest trips on rainy days?
+
+WITH rainy AS
+	(SELECT 
+	 DATE(date) rain_date
+	 FROM weather
+	 WHERE events = 'Rain'
+	 GROUP BY 1
+)
+SELECT t.trip_id, t.duration, DATE(t.start_date)
+FROM trips t
+JOIN rainy r
+ON DATE(t.start_date) = r.rain_date
+ORDER BY duration DESC
+LIMIT 3
+
+-- Which station is full most often?
+
+SELECT 
+	stations.name,
+	COUNT(CASE WHEN status.docks_available=0 THEN 1 END) station_count
+FROM status
+JOIN stations
+ON status.station_id = stations.station_id
+GROUP BY stations.name
+ORDER BY station_count DESC
+
+-- Return a list of stations with a count of number of trips starting at that station but ordered by dock count.
+
+SELECT stations.name, stations.dockcount, COUNT(trips.start_station)
+FROM stations
+JOIN trips
+ON stations.name = trips.start_station
+GROUP BY stations.name, stations.dockcount
+ORDER BY stations.dockcount DESC
+
+-- (Challenge) What's the length of the longest trip for each day it rains anywhere?
+
+WITH rainy AS
+	(SELECT DATE(date) rain_date
+	 FROM weather
+	 WHERE events = 'Rain'
+	 GROUP BY 1
+),
+
+rain_trips AS
+	(SELECT trip_id, duration, DATE(trips.start_date)
+	 rain_trips_date
+	 FROM trips	
+	 JOIN rainy
+	 ON rainy.rain_date = DATE(trips.start_date)
+	 ORDER BY duration DESC
+)
+
+SELECT rain_trips_date, MAX(duration) max_duration
+FROM rain_trips
+GROUP BY 1
+ORDER BY rain_trips_date DESC
+
+-- Shows average per month cost (& year) high to low 
+
+WITH money AS (
+	SELECT 
+		to_char(c.calender_date, 'Month') months,
+		to_char(c.calender_date, 'YYYY') years,
+		to_number(price, '9999') price
+	FROM sfo_calendar c
+	WHERE price IS NOT NULL
+)
+SELECT months, years, AVG(price) avg_price
+FROM money
+GROUP BY months, years
+ORDER BY avg_price DESC
+
+-- Sort number of average # reviews by month
+
+SELECT 
+	to_char(l.last_review, 'Month') months,
+	-- to_char(l.last_review, 'YYYY') years,
+	AVG(l.number_of_reviews) reviews
+FROM sfo_listings l
+GROUP BY months --, years
+ORDER BY reviews DESC
