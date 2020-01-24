@@ -1,0 +1,109 @@
+-- 1. query that allows you to inspect the schema of the naep table
+
+SELECT COLUMN_NAME, data_type 
+FROM information_schema.COLUMNS
+WHERE table_name = 'naep';
+ 
+-- 2. Write a query that returns the first 50 records of the naep table
+
+SELECT *
+FROM naep
+LIMIT 50;
+
+-- 3. query that returns summary statistics for avg_math_4_score by state
+
+SELECT 
+	state, 
+	ROUND(AVG(avg_math_4_score),2) as "average",
+	ROUND(MIN(avg_math_4_score),2) as "min score",
+	ROUND(MAX(avg_math_4_score),2) as "max score",
+	ROUND(STDDEV(avg_math_4_score),2) as "standard deviation"
+FROM naep
+GROUP BY state
+ORDER BY state ASC;
+
+-- 4. returns the summary statistics for avg_math_4_score by state with diff for max & min > 30
+
+WITH sum_stats AS (
+	SELECT 
+		state, 
+		ROUND(AVG(avg_math_4_score),2) as "average",
+		ROUND(MIN(avg_math_4_score),2) as "min_score",
+		ROUND(MAX(avg_math_4_score),2) as "max_score",
+		ROUND(STDDEV(avg_math_4_score),2) as "standard_deviation"
+	FROM naep
+	GROUP BY state
+	ORDER BY state ASC
+)
+SELECT state, average, standard_deviation, max_score, min_score
+FROM sum_stats
+WHERE max_score - min_score > 30;
+
+-- 5. returns bottom_10_states lists states in bottom 10 avg_math_4_score in the year 2000
+
+WITH avg_score AS (
+	SELECT
+		state,
+		year,
+		avg_math_4_score as "bottom_10_states"
+	FROM naep
+	GROUP BY state,year,bottom_10_states
+	ORDER BY bottom_10_states ASC
+)
+
+SELECT * 
+FROM avg_score
+WHERE year=2000
+LIMIT 10;
+
+-- 6. average avg_math_4_score rounded to nearest 2 dec places over all states in the year 2000
+
+WITH avg_score AS (
+	SELECT
+		state,
+		year,
+		ROUND(AVG(avg_math_4_score),2) as "average"
+	FROM naep
+	GROUP BY state,year
+	ORDER BY average DESC
+)
+
+SELECT * 
+FROM avg_score
+WHERE year=2000;
+
+-- 7. below_average_states_y2000 
+
+SELECT state, year, avg_math_4_score
+FROM naep
+WHERE avg_math_4_score < (
+	SELECT AVG(avg_math_4_score)
+	FROM naep
+) AND year = 2000;
+
+-- 8. select all NULL values from avg_math_4_score in year 2000
+
+SELECT state, year, avg_math_4_score
+FROM naep
+WHERE avg_math_4_score IS NULL AND year = 2000;
+
+-- 9. for year 2000 state avg_math_4_score and expenditure
+
+SELECT 
+	naep.state, 
+	ROUND(naep.avg_math_4_score,2),
+	finance.total_expenditure
+FROM naep
+LEFT OUTER JOIN finance
+ON naep.id=finance.id
+WHERE naep.year=2000 AND avg_math_4_score IS NOT NULL
+ORDER BY finance.total_expenditure DESC;
+
+
+
+
+
+
+
+
+
